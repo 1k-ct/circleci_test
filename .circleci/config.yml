@@ -1,9 +1,9 @@
-version: 2.1
+version: 2
 jobs:
   build:
     docker:
       - image: circleci/golang:1.8
-    workingworking_directory: /go/src/github.com/1k-ct/circleci_test
+    working_directory: /go/src/github.com/1k-ct/circleci_test
     steps:
       - checkout
       - run: go get -v -t -d ./...
