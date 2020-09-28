@@ -7,6 +7,11 @@ import (
 	"api/hello"
 )
 
+//HelloWorld return => "hello world, " + s(string)
+func HelloWorld(s string) string {
+	return "hello world, " + s
+}
+
 func main() {
 	// Echo instance
 	e := echo.New()
