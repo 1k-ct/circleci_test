@@ -1,10 +1,10 @@
 package main
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-
-	"api/hello"
 )
 
 //HelloWorld return => "hello world, " + s(string)
@@ -21,8 +21,13 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Routes
-	e.GET("/ping", hello.Hello)
+	e.GET("/ping", Hello)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":8080"))
+}
+
+// Handler
+func Hello(c echo.Context) error {
+	return c.String(http.StatusOK, "Hello, World!")
 }

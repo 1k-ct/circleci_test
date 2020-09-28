@@ -30,7 +30,9 @@ jobs:
           name: Restore go modules cache
           keys:
             - v1-dependencies-{{ checksum "go.mod" }}
+      - run: cd ./api
       - run: go build ./api/main.go
+      - run: cd ..
       - save_cache:
           name: Save go modules cache
           key: v1-dependencies-{{ checksum "go.mod" }}
