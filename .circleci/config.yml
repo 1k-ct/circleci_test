@@ -1,10 +1,67 @@
-version: 2
+version: 2.1
+orbs:
+  gcp-cli: circleci/gcp-cli@1.8.2
+
 jobs:
-  build:
+  test:
+    working_directory: ~/workspace
     docker:
-      - image: circleci/golang:1.8
-    working_directory: /go/src/github.com/1k-ct/circleci_test
+      - image: circleci/golang:1.12
+        environment:
+          GO111MODULE: "on"
+
     steps:
       - checkout
-      - run: go get -v -t -d ./...
       - run: go test -v ./...
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  build:
+    working_directory: ~/workspace
+    docker:
+      - image: circleci/golang:1.12
+
+    steps:
+      - attach_workspace:
+          at: .
+      - restore_cache:
+          name: Restore go modules cache
+          keys:
+            - v1-dependencies-{{ checksum "go.mod" }}
+      - run: go build ./api/main.go
+      - save_cache:
+          name: Save go modules cache
+          key: v1-dependencies-{{ checksum "go.mod" }}
+          paths:
+            - /go/pkg/mod/cache
+      - persist_to_workspace:
+          root: .
+          paths:
+            - .
+
+  deploy-develop:
+    working_directory: ~/workspace
+    docker:
+      - image: google/cloud-sdk:latest
+
+    steps:
+      - attach_workspace:
+          at: .
+      - gcp-cli/initialize
+      - run:
+          name: Deploy to Google App Engine
+          command: |
+            gcloud --quiet app deploy ./api/app-develop.yaml --project=$GOOGLE_PROJECT_ID --version=$CIRCLE_BRANCH
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test
+      - build:
+          requires:
+            - test
+      - deploy-develop:
+          requires:
+            - build
