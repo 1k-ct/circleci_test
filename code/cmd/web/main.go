@@ -1,22 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
+func hoge(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "hoge no mi")
+}
+func top(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "my top page hello")
+}
 func main() {
-	r := gin.Default()
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "hello",
-		})
-	})
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"massage": "golang gin",
-		})
-	})
-	r.Run()
+	http.HandleFunc("/", top)
+	http.HandleFunc("/hoge", hoge)
+	http.ListenAndServe(":8080", nil)
 }
