@@ -1,67 +1,32 @@
-version: 2.1
-orbs:
-  gcp-cli: circleci/gcp-cli@1.8.2
-
+version: 2
 jobs:
-  test:
-    working_directory: ~/workspace
+  build:
+    working_directory: /go/src/github.com/1k-ct/circleci_test
     docker:
-      - image: circleci/golang:1.12
-        environment:
-          GO111MODULE: "on"
-
+      - image: google/cloud-sdk
     steps:
+      # ↓GitHubのブランチにあるファイルを取得して後続のstepで参照するためのコマンド
       - checkout
-      # - run: go test -v ./...
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-
-  build:
-    working_directory: ~/workspace
-    docker:
-      - image: circleci/golang:1.12
-
-    steps:
-      - attach_workspace:
-          at: .
-      - restore_cache:
-          name: Restore go modules cache
-          keys:
-            - v1-dependencies-{{ checksum "./api/go.mod" }}
-      # - run: go build main.go #go build ./api/main.go
-      - save_cache:
-          name: Save go modules cache
-          key: v1-dependencies-{{ checksum "./api/go.mod" }}
-          paths:
-            - /go/pkg/mod/cache
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-
-  deploy-develop:
-    working_directory: ~/workspace
-    docker:
-      - image: google/cloud-sdk:latest
-
-    steps:
-      - attach_workspace:
-          at: .
-      - gcp-cli/initialize
+      # ↓CircleCI上でdocker、docker-composeコマンドを利用するための設定
+      - setup_remote_docker:
+          version: 18.06.0-ce
       - run:
-          name: Deploy to Google App Engine
+          name: Setup CLOUD SDK
           command: |
-            gcloud --quiet app deploy ./api/app-develop.yaml --project=$GOOGLE_PROJECT_ID --version=$CIRCLE_BRANCH
-workflows:
-  version: 2
-  build:
-    jobs:
-      - test
-      - build:
-          requires:
-            - test
-      - deploy-develop:
-          requires:
-            - build
+            # CircleCIの環境変数に登録したサービスアカウントの値を`echo`して`gcloud auth`に渡す。
+            # `gcloud auth ... --key-file=-`はCLOUD SDKの認証にサービスアカウントを利用するための設定
+            echo $GCLOUD_SERVICE_KEY | gcloud auth activate-service-account --key-file=-
+            gcloud --quiet config set project needmov239087
+            gcloud --quiet config set compute/zone asia-east1-b
+            # ↓dockerのCredential helpersを利用。GCRなどのDocker Registry向けの認証を`docker login`コマンドなしで提供できるようにする設定
+            gcloud --quiet auth configure-docker
+      - run:
+          name: Push docker image
+          command: |
+            docker image build -t go-web-server -f ./df-go.dockerfile .
+            TAG=gcr.io/needmov239087/go-web-server:pushed-`date +%Y%m%d%H%M%S`
+            docker image tag go-web-server $TAG
+            docker image push $TAG
+            LATEST_TAG=gcr.io/needmov239087/go-web-server:latest
+            docker image tag go-web-server $LATEST_TAG
+            docker image push $LATEST_TAG
